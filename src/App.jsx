@@ -1,57 +1,62 @@
-import { PiAddressBookDuotone } from "react-icons/pi";
-import ContactForm from "./components/ContactForm/ContactForm";
-import SearchBox from "./components/SearchBox/SearchBox";
-import ContactList from "./components/ContactList/ContactList";
 import { useEffect, useState } from "react";
+import LoadMoreBtn from "./components/LoadMoreBtn/LoadMoreBtn";
+import SearchBar from "./components/SearchBar/SearchBar";
+import ImageGallery from "./components/ImageGallery/ImageGallery";
+import Loader from "./components/Loader/Loader";
+import ErrorMessage from "./components/ErrorMessage/ErrorMessage";
+import ImageModal from "./components/ImageModal/ImageModal";
 
 const App = () => {
-  const [contacts, setContacts] = useState([
-    { id: "id-1", name: "Rosie Simpson", number: "459-12-56" },
-    { id: "id-2", name: "Hermione Kline", number: "443-89-12" },
-    { id: "id-3", name: "Eden Clements", number: "645-17-79" },
-    { id: "id-4", name: "Annie Copeland", number: "227-91-26" },
-  ]);
-
-  const [filter, setFilter] = useState("");
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [modalImage, setModalImage] = useState(null);
 
   useEffect(() => {
-    const savedContacts = JSON.parse(localStorage.getItem("contacts")) || [];
-    setContacts(savedContacts);
-  }, []);
+    if (!query) return;
 
-  useEffect(() => {
-    localStorage.setItem("contacts", JSON.stringify(contacts));
-  }, [contacts]);
+    const fetchImages = async (query, page) => {
+      setIsLoading(true);
+      try {
+        const newImages = await fetchImages(
+          `https://api.unsplash.com/search/photos?query=${query}&page=${page}&client_id=V8Lf3HMrQev_hQ0oE91bCwgOEuF6slPv5YcvzmqFzXE`
+        );
+        setImages((prevImages) => [...prevImages, ...newImages]);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchImages();
+  }, [query, page]);
 
-  const addContact = (newContact) => {
-    setContacts((prevContacts) => [newContact, ...prevContacts]);
+  const handleSearch = (newQuery) => {
+    setQuery(newQuery);
+    setImages([]);
+    setPage(1);
+    setError(null);
   };
 
-  const deleteContact = (id) => {
-    setContacts((prevContacts) =>
-      prevContacts.filter((contact) => contact.id !== id)
-    );
-  };
+  const handleLoadMore = () => setPage((prevPage) => prevPage + 1);
 
-  const handleFilterChange = (e) => {
-    setFilter(e.target.value);
-  };
+  const handleModal = (image) => setModalImage(image);
 
-  const filteredContacts = contacts.filter((contact) =>
-    contact.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const closeModal = () => setModalImage(null);
+
   return (
-    <div className="phonebook-box">
-      <h1 className="phonebook-title">
-        Phonebook
-        <PiAddressBookDuotone className="icon" />
-      </h1>
-      <ContactForm onAddContact={addContact} />
-      <SearchBox value={filter} onChange={handleFilterChange} />
-      <ContactList
-        contacts={filteredContacts}
-        onDeleteContact={deleteContact}
-      />
+    <div className="gallery-box">
+      <h1>Image Gallery</h1>
+      <SearchBar onSubmit={handleSearch} />
+      {error && <ErrorMessage message={error} />}
+      <ImageGallery images={images} onImageClick={handleModal} />
+      {isLoading && <Loader />}
+      {images.length > 0 && !isLoading && (
+        <LoadMoreBtn onClick={handleLoadMore} />
+      )}
+      {modalImage && <ImageModal image={modalImage} onClose={closeModal} />}
     </div>
   );
 };
